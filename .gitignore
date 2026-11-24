@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.dist/
+.env
+# raw latency logs are regenerated; summarized tables in results/*.md are committed
+results/*.jsonl
+models/
