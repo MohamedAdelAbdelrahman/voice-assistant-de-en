@@ -3,8 +3,9 @@
 A voice assistant for the shop floor. Ask in German or English ("Wie ist der Status von Linie 2?", "Create a maintenance ticket for machine 7.") and get a spoken answer in the same language. Response time is measured and optimized one stage at a time.
 
 ```
-Silero VAD → faster-whisper (STT + language ID) → LLM + function calling ─┬─ get_line_status / create_ticket / list_alarms
-                                                                           └─ LangGraph agent (complex questions)
+Silero VAD → faster-whisper (STT + language ID) → local LLM (Ollama) + function calling ─┬─ get_line_status / list_alarms / create_ticket
+                                                                                         ├─ get_machine_telemetry (AI4I 2020 data)
+                                                                                         └─ ask_manual (maintenance handbook search)
                                                   → sentence streaming → Piper TTS
 ```
 
@@ -34,7 +35,7 @@ pytest
 
 ```
 pipeline/   vad, stt, llm, tts modules + latency timing
-functions/  callable tools + agent bridge
+functions/  callable tools + mock shop-floor data + maintenance manual
 server/     push-to-talk app
 eval/       test recordings, WER + latency scripts
 results/    latency tables and charts
