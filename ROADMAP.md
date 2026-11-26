@@ -69,6 +69,7 @@ Legend: ✅ done · 🔄 in progress · ⬜ not started
 - [ ] `functions/manual.py`: an `ask_manual(question)` tool that finds the most relevant handbook sections with local keyword/BM25 search (free, no extra model) and returns them with their source
 - [ ] Routing rules in the prompt: status/alarms/tickets go to the direct tools; "how do I…", "what does E-204 mean", safety questions go to `ask_manual`; the answer cites only the handbook
 - [ ] `pipeline/tts.py`: Piper with one German voice (`de_DE-thorsten`, CC0) and one English voice (check the licence first: `en_US-lessac` is reported as non-commercial), loaded once, voice chosen by language
+- [ ] CI: GitHub Actions workflow runs `pytest` on every push, with a "tests passing" badge in the README (the tests use fakes, so no models or GPU are needed)
 - **Commit:** `feat: maintenance manual Q&A tool + Piper TTS (DE/EN)`
 - **Change:** this replaces the earlier plan to bridge to a separate "Project B" LangGraph agent, which doesn't exist.
 
