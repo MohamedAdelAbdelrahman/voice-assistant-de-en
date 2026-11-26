@@ -43,12 +43,26 @@ Legend: ✅ done · 🔄 in progress · ⬜ not started
 - **Commit:** `feat: Silero VAD + shop-floor tools with schemas`
 - **Note:** Silero v6 runs via onnxruntime using the model bundled with faster-whisper, so there is no torch dependency. VAD takes about 10–20 ms per utterance. End of speech is detected `silence_ms` (default 500 ms) after the last speech frame. That wait counts directly toward the 2 s budget, so it gets tuned on Day 8. Trimming silence barely changes STT time because Whisper pads every input to a 30 s window.
 
-### Day 3 · Fri 2026-11-27 · LLM function calling (3 h) ⬜ → **M1**
-- [ ] `pipeline/llm.py`: LLM client (Ollama or API) with tool calling and a streaming response
-- [ ] System prompt: answer in the detected language, keep answers short and easy to speak
-- [ ] Tool loop: the LLM calls a tool, gets the result, and writes the final answer
-- [ ] `scripts/run_file.py`: takes a WAV and prints the transcript, the tool call and the answer
+### Day 3 · Fri 2026-11-27 · LLM function calling (3 h) ✅ → **M1 reached**
+- [x] `pipeline/llm.py`: LLM client (Ollama or API) with tool calling and a streaming response
+- [x] System prompt: answer in the detected language, keep answers short and easy to speak
+- [x] Tool loop: the LLM calls a tool, gets the result, and writes the final answer
+- [x] `scripts/run_file.py`: takes a WAV and prints the transcript, the tool call and the answer
 - **Commit:** `feat: LLM function calling, end-to-end text pipeline on audio files`
+- **Decision:** the LLM runs **locally via Ollama** (free, offline) on the laptop GPU (GTX 1650, 4 GB). The Claude API backend is kept as an option (`--llm claude`) for a later cloud-vs-local comparison.
+- **Model choice** (6 DE/EN questions, text only):
+
+  | Model | Correct tool | Runs on | Notes |
+  |---|---|---|---|
+  | **qwen2.5:3b** | **6/6** | 100% GPU | chosen; 2.5–5.4 s per turn |
+  | qwen3:4b-instruct | 1/6 | 68% GPU | answered from imagination instead of calling tools |
+  | qwen3:4b | n/a | 66% GPU | writes its reasoning into the answer despite `think=False`, ~6 min per turn |
+
+- **Open issues for Day 5 and Day 8:**
+  - Answers are sometimes too long or use list formatting, which doesn't work for speech.
+  - One arithmetic slip (52 out of a target of 50 was called "92%").
+  - When the user gave no description, the model invented one for a ticket. The Day 9 confirmation step guards against this.
+  - First LLM token takes 1.7–3.5 s because the tool round runs before any text. STT (~3.8 s) is still the largest stage.
 
 ### Day 4 · Mon 2026-11-30 · Agent bridge + TTS (3 h) ⬜
 - [ ] `functions/agent_bridge.py`: an `ask_agent(question)` tool that sends complex questions to the Project B LangGraph agent (HTTP or import), with a timeout and a fallback answer

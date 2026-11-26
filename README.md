@@ -21,6 +21,11 @@ pip install -r requirements.txt
 powershell -ExecutionPolicy Bypass -File scripts/make_synthetic_samples.ps1
 
 python scripts/transcribe_files.py eval/samples   # VAD -> STT, per-stage timings in results/latency_raw.jsonl
+
+# full text pipeline: VAD -> STT -> LLM + tools -> answer
+ollama pull qwen2.5:3b                              # local LLM, free (https://ollama.com)
+python scripts/run_file.py eval/samples
+python scripts/run_file.py eval/samples --llm claude   # optional: Claude API, key in .env
 pytest
 ```
 
