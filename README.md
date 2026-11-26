@@ -20,7 +20,7 @@ pip install -r requirements.txt
 # optional: synthetic smoke-test WAVs (Windows built-in voices)
 powershell -ExecutionPolicy Bypass -File scripts/make_synthetic_samples.ps1
 
-python scripts/transcribe_files.py eval/samples
+python scripts/transcribe_files.py eval/samples   # VAD -> STT, per-stage timings in results/latency_raw.jsonl
 pytest
 ```
 

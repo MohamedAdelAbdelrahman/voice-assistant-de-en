@@ -1,0 +1,37 @@
+{
+  "lines": [
+    {"id": 1, "name": "Linie 1 – Pressen", "status": "running", "output_per_hour": 118, "target_per_hour": 120, "oee": 0.87, "machines": [1, 2]},
+    {"id": 2, "name": "Linie 2 – CNC-Fräsen", "status": "degraded", "output_per_hour": 64, "target_per_hour": 90, "oee": 0.61, "machines": [3, 4, 5]},
+    {"id": 3, "name": "Linie 3 – Schweißen", "status": "stopped", "output_per_hour": 0, "target_per_hour": 75, "oee": 0.0, "machines": [6, 7]},
+    {"id": 4, "name": "Linie 4 – Lackierung", "status": "running", "output_per_hour": 52, "target_per_hour": 50, "oee": 0.92, "machines": [8, 9, 10]},
+    {"id": 5, "name": "Linie 5 – Montage", "status": "maintenance", "output_per_hour": 0, "target_per_hour": 40, "oee": 0.0, "machines": [11, 12]}
+  ],
+  "machines": [
+    {"id": 1,  "name": "Presse P-100",         "line_id": 1, "status": "running"},
+    {"id": 2,  "name": "Presse P-200",         "line_id": 1, "status": "running"},
+    {"id": 3,  "name": "CNC-Fräse F-310",      "line_id": 2, "status": "running"},
+    {"id": 4,  "name": "CNC-Fräse F-320",      "line_id": 2, "status": "error"},
+    {"id": 5,  "name": "Entgratstation E-330", "line_id": 2, "status": "running"},
+    {"id": 6,  "name": "Schweißroboter S-410", "line_id": 3, "status": "error"},
+    {"id": 7,  "name": "Schweißroboter S-420", "line_id": 3, "status": "idle"},
+    {"id": 8,  "name": "Lackierroboter L-510", "line_id": 4, "status": "running"},
+    {"id": 9,  "name": "Trockenofen T-520",    "line_id": 4, "status": "running"},
+    {"id": 10, "name": "Prüfstation Q-530",    "line_id": 4, "status": "running"},
+    {"id": 11, "name": "Montageband M-610",    "line_id": 5, "status": "maintenance"},
+    {"id": 12, "name": "Schrauber M-620",      "line_id": 5, "status": "maintenance"}
+  ],
+  "alarms": [
+    {"id": "A-1001", "code": "E-204", "machine_id": 4,  "line_id": 2, "severity": "critical", "message_de": "Spindeltemperatur zu hoch", "message_en": "Spindle temperature too high", "raised_at": "2026-11-26T08:12:00", "active": true},
+    {"id": "A-1002", "code": "W-118", "machine_id": 3,  "line_id": 2, "severity": "warning",  "message_de": "Werkzeugverschleiß über 80 %", "message_en": "Tool wear above 80%", "raised_at": "2026-11-26T07:40:00", "active": true},
+    {"id": "A-1003", "code": "E-512", "machine_id": 6,  "line_id": 3, "severity": "critical", "message_de": "Schutzgas-Druck zu niedrig", "message_en": "Shielding gas pressure too low", "raised_at": "2026-11-26T08:55:00", "active": true},
+    {"id": "A-1004", "code": "E-513", "machine_id": 6,  "line_id": 3, "severity": "critical", "message_de": "Not-Aus ausgelöst", "message_en": "Emergency stop triggered", "raised_at": "2026-11-26T08:56:00", "active": true},
+    {"id": "A-1005", "code": "W-301", "machine_id": 7,  "line_id": 3, "severity": "warning",  "message_de": "Wartezeit auf Material", "message_en": "Waiting for material", "raised_at": "2026-11-26T08:57:00", "active": true},
+    {"id": "A-1006", "code": "I-020", "machine_id": 9,  "line_id": 4, "severity": "info",     "message_de": "Filterwechsel in 48 Stunden fällig", "message_en": "Filter change due in 48 hours", "raised_at": "2026-11-26T06:00:00", "active": true},
+    {"id": "A-1007", "code": "W-150", "machine_id": 1,  "line_id": 1, "severity": "warning",  "message_de": "Hydrauliköl-Temperatur erhöht", "message_en": "Hydraulic oil temperature elevated", "raised_at": "2026-11-25T22:10:00", "active": false},
+    {"id": "A-1008", "code": "I-001", "machine_id": 11, "line_id": 5, "severity": "info",     "message_de": "Geplante Wartung läuft", "message_en": "Scheduled maintenance in progress", "raised_at": "2026-11-26T06:00:00", "active": true}
+  ],
+  "tickets": [
+    {"id": "T-0041", "machine_id": 4, "description": "Spindellager prüfen, Geräusche bei hoher Drehzahl", "priority": "high", "status": "open", "created_at": "2026-11-25T14:30:00"},
+    {"id": "T-0042", "machine_id": 11, "description": "Jährliche Wartung Montageband", "priority": "medium", "status": "in_progress", "created_at": "2026-11-26T06:00:00"}
+  ]
+}

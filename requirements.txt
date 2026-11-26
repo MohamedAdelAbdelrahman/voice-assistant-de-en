@@ -1,3 +1,4 @@
 faster-whisper>=1.1
+onnxruntime  # Silero VAD (model bundled with faster-whisper)
 numpy
 pytest

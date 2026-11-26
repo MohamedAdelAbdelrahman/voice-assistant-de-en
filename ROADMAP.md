@@ -34,13 +34,14 @@ Legend: ✅ done · 🔄 in progress · ⬜ not started
 - **Commit:** `feat: project skeleton + faster-whisper STT with language detection`
 - **Note:** first measurement with `small` int8 on CPU: STT takes about 4–6 s per short utterance. That alone is over the 2 s target, so STT is the first thing to optimize on Day 8.
 
-### Day 2 · Thu 2026-11-26 · VAD + tools (3 h) ⬜
-- [ ] `pipeline/vad.py`: use Silero VAD to trim leading and trailing silence and detect when speech ends
-- [ ] Chain VAD → STT on files and log both timings
-- [ ] `functions/`: mock shop-floor data (lines 1–5, machines 1–12, alarms, tickets) as JSON
-- [ ] Implement `get_line_status(line_id)`, `list_alarms(line_id?, severity?)`, `create_ticket(machine_id, description, priority)` with JSON schemas
-- [ ] Unit tests for the tools
+### Day 2 · Thu 2026-11-26 · VAD + tools (3 h) ✅
+- [x] `pipeline/vad.py`: use Silero VAD to trim leading and trailing silence and detect when speech ends
+- [x] Chain VAD → STT on files and log both timings
+- [x] `functions/`: mock shop-floor data (lines 1–5, machines 1–12, alarms, tickets) as JSON
+- [x] Implement `get_line_status(line_id)`, `list_alarms(line_id?, severity?)`, `create_ticket(machine_id, description, priority)` with JSON schemas
+- [x] Unit tests for the tools
 - **Commit:** `feat: Silero VAD + shop-floor tools with schemas`
+- **Note:** Silero v6 runs via onnxruntime using the model bundled with faster-whisper, so there is no torch dependency. VAD takes about 10–20 ms per utterance. End of speech is detected `silence_ms` (default 500 ms) after the last speech frame. That wait counts directly toward the 2 s budget, so it gets tuned on Day 8. Trimming silence barely changes STT time because Whisper pads every input to a 30 s window.
 
 ### Day 3 · Fri 2026-11-27 · LLM function calling (3 h) ⬜ → **M1**
 - [ ] `pipeline/llm.py`: LLM client (Ollama or API) with tool calling and a streaming response
