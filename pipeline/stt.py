@@ -33,13 +33,17 @@ def load_audio(path: str | Path) -> np.ndarray:
     if path.suffix.lower() != ".wav":
         return decode_audio(str(path), sampling_rate=SAMPLE_RATE)
 
-    with wave.open(str(path), "rb") as w:
-        sr, ch, width = w.getframerate(), w.getnchannels(), w.getsampwidth()
-        raw = w.readframes(w.getnframes())
-    if width != 2:
-        raise ValueError(f"{path.name}: only 16-bit PCM WAV supported, got {8 * width}-bit")
+    try:
+        with wave.open(str(path), "rb") as w:
+            sr, ch, width = w.getframerate(), w.getnchannels(), w.getsampwidth()
+            raw = w.readframes(w.getnframes())
+        if width != 2:
+            raise ValueError(f"{path.name}: only 16-bit PCM WAV supported, got {8 * width}-bit")
+        audio = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
+    except wave.Error:
+        # stdlib wave rejects IEEE-float WAV (format 3), which FLEURS uses
+        audio, sr, ch = _read_float_wav(path)
 
-    audio = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
     if ch > 1:
         audio = audio.reshape(-1, ch).mean(axis=1)
     if sr != SAMPLE_RATE:
@@ -48,6 +52,33 @@ def load_audio(path: str | Path) -> np.ndarray:
             np.linspace(0, len(audio) - 1, n_out), np.arange(len(audio)), audio
         ).astype(np.float32)
     return audio
+
+
+def _read_float_wav(path: Path) -> tuple[np.ndarray, int, int]:
+    """Minimal RIFF parser for 32-bit IEEE-float WAV. Returns (samples, rate, channels)."""
+    data = path.read_bytes()
+    if data[:4] != b"RIFF" or data[8:12] != b"WAVE":
+        raise ValueError(f"{path.name}: not a WAV file")
+    pos, fmt, samples = 12, None, None
+    while pos + 8 <= len(data):
+        cid, size = data[pos : pos + 4], int.from_bytes(data[pos + 4 : pos + 8], "little")
+        body = data[pos + 8 : pos + 8 + size]
+        if cid == b"fmt ":
+            tag, ch, sr = (int.from_bytes(body[0:2], "little"), int.from_bytes(body[2:4], "little"),
+                           int.from_bytes(body[4:8], "little"))
+            bits = int.from_bytes(body[14:16], "little")
+            if tag == 0xFFFE and len(body) >= 26:  # WAVE_FORMAT_EXTENSIBLE: real tag in sub-format
+                tag = int.from_bytes(body[24:26], "little")
+            fmt = (tag, ch, sr, bits)
+        elif cid == b"data":
+            samples = body
+        pos += 8 + size + (size & 1)
+    if fmt is None or samples is None:
+        raise ValueError(f"{path.name}: missing fmt or data chunk")
+    tag, ch, sr, bits = fmt
+    if tag != 3 or bits != 32:
+        raise ValueError(f"{path.name}: unsupported WAV format tag={tag} bits={bits}")
+    return np.frombuffer(samples, dtype="<f4").astype(np.float32), sr, ch
 
 
 class SpeechToText:

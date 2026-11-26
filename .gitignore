@@ -7,3 +7,5 @@ __pycache__/
 # raw latency logs are regenerated; summarized tables in results/*.md are committed
 results/*.jsonl
 models/
+# external datasets: fetched by scripts/fetch_datasets.py, licences need attribution (DATASETS.md)
+data/external/

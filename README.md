@@ -26,6 +26,7 @@ python scripts/transcribe_files.py eval/samples   # VAD -> STT, per-stage timing
 ollama pull qwen2.5:3b                              # local LLM, free (https://ollama.com)
 python scripts/run_file.py eval/samples
 python scripts/run_file.py eval/samples --llm claude   # optional: Claude API, key in .env
+python scripts/fetch_datasets.py                  # free eval datasets (FLEURS, AI4I 2020), see DATASETS.md
 pytest
 ```
 
