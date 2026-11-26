@@ -2,7 +2,7 @@
 
 A voice assistant for the shop floor. Ask a question in German or English and get a spoken answer back fast. Response time is measured and optimized one stage at a time.
 
-**Pipeline:** Silero VAD → faster-whisper (STT + language detection) → LLM with function calling (`get_line_status`, `create_ticket`, `list_alarms`, plus a bridge to my LangGraph agent) → Piper TTS, with sentence-level streaming
+**Pipeline:** Silero VAD → faster-whisper (STT + language detection) → LLM with function calling (`get_line_status`, `create_ticket`, `list_alarms`, `ask_manual` for open how-to questions, and `get_machine_telemetry`) → Piper TTS, with sentence-level streaming
 
 **Time budget:** 2 weeks · 10 working days · ~3 h/day · ~30 h total
 **Timeline:** Wed 2026-11-25 → Tue 2026-12-08
@@ -64,11 +64,13 @@ Legend: ✅ done · 🔄 in progress · ⬜ not started
   - When the user gave no description, the model invented one for a ticket. The Day 9 confirmation step guards against this.
   - First LLM token takes 1.7–3.5 s because the tool round runs before any text. STT (~3.8 s) is still the largest stage.
 
-### Day 4 · Mon 2026-11-30 · Agent bridge + TTS (3 h) ⬜
-- [ ] `functions/agent_bridge.py`: an `ask_agent(question)` tool that sends complex questions to the Project B LangGraph agent (HTTP or import), with a timeout and a fallback answer
-- [ ] Routing rules in the prompt: simple commands go to the direct tools, open questions go to the agent
-- [ ] `pipeline/tts.py`: Piper with one German voice (e.g. `de_DE-thorsten`) and one English voice (e.g. `en_US-lessac`), loaded once, voice chosen by language
-- **Commit:** `feat: LangGraph agent bridge + Piper TTS (DE/EN)`
+### Day 4 · Mon 2026-11-30 · Maintenance manual Q&A + TTS (3 h) ⬜
+- [ ] `functions/data/manual/`: a short DE/EN maintenance handbook: what each alarm code means, the fix steps, safety rules (e.g. lockout before opening a machine)
+- [ ] `functions/manual.py`: an `ask_manual(question)` tool that finds the most relevant handbook sections with local keyword/BM25 search (free, no extra model) and returns them with their source
+- [ ] Routing rules in the prompt: status/alarms/tickets go to the direct tools; "how do I…", "what does E-204 mean", safety questions go to `ask_manual`; the answer cites only the handbook
+- [ ] `pipeline/tts.py`: Piper with one German voice (`de_DE-thorsten`, CC0) and one English voice (check the licence first: `en_US-lessac` is reported as non-commercial), loaded once, voice chosen by language
+- **Commit:** `feat: maintenance manual Q&A tool + Piper TTS (DE/EN)`
+- **Change:** this replaces the earlier plan to bridge to a separate "Project B" LangGraph agent, which doesn't exist.
 
 ### Day 5 · Tue 2026-12-01 · Streaming (3 h) ⬜ → **M2**
 - [ ] Split the LLM token stream into sentences, keeping numbers and abbreviations like "z. B." or "Nr. 7" intact
@@ -82,11 +84,12 @@ Legend: ✅ done · 🔄 in progress · ⬜ not started
 
 ## Week 2: Measure, optimize, ship
 
-### Day 6 · Wed 2026-12-02 · Test dataset (3 h) ⬜
-- [ ] Write 30 DE and 30 EN test sentences that include machine names, line numbers, numbers and alarm codes
+### Day 6 · Wed 2026-12-02 · Test dataset + telemetry tool (3 h) ⬜
+- [ ] `get_machine_telemetry(machine_id)`: live-looking sensor values (air/process temperature, speed, torque, tool wear, failure flags) taken from the AI4I 2020 dataset (see DATASETS.md), with unit tests
+- [ ] Write 30 DE and 30 EN test sentences that include machine names, line numbers, numbers and alarm codes, covering all five tools
 - [ ] Record them and save them to `eval/audio/{de,en}/NN.wav`
 - [ ] `eval/dataset.jsonl`: for each sentence, the reference transcript, the expected function and the expected arguments
-- **Commit:** `eval: 60 recorded test sentences with references and expected calls`
+- **Commit:** `feat: machine telemetry tool (AI4I 2020) + 60 recorded test sentences`
 
 ### Day 7 · Thu 2026-12-03 · Evaluation scripts + baseline (3 h) ⬜ → **M3**
 - [ ] `eval/wer.py`: compute WER with `jiwer` and text normalization (case, punctuation, numbers), per language
@@ -113,7 +116,7 @@ Optimize the slowest stage first, based on the Day 7 measurements.
 ### Day 10 · Tue 2026-12-08 · Results + release (3 h) ⬜ → **M5**
 - [ ] `results/`: latency chart (p50/p95 per stage, before/after), WER table and function-accuracy table
 - [ ] README: architecture diagram, quickstart, results tables, whether the target was reached, limitations
-- [ ] Record a 1–2 min demo video with one DE and one EN query, a tool call, an agent question and the confirmation step
+- [ ] Record a 1–2 min demo video with one DE and one EN query, a tool call, a manual question and the confirmation step
 - **Tag:** `v1.0` and publish a GitHub release
 - **Commit:** `docs: README with results + demo video`
 
@@ -146,7 +149,7 @@ Optimize the slowest stage first, based on the Day 7 measurements.
 | Risk | Mitigation |
 |---|---|
 | Audio device issues on Windows | Build and test on WAV files first, add the microphone only on Day 9 |
-| Agent from Project B is slow or unavailable | Timeout plus a spoken fallback; report agent latency separately |
+| Manual search returns the wrong section | Return the source section with the answer; check manual questions in the Day 7 eval |
 | Optimizing the wrong stage | Measure first on Day 7 and fix the slowest stage first |
 | Misrecognized commands trigger actions | Confirm before any action that changes something |
 | Falling behind schedule | Nice-to-haves are cut first; the must-haves are done by Day 9 |
