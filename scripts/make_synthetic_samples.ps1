@@ -9,7 +9,9 @@ $samples = @(
   @("de_03_alarms.wav",      "Microsoft Hedda Desktop", "Welche Alarme sind gerade auf Linie 3 aktiv?"),
   @("en_01_line_status.wav", "Microsoft Zira Desktop",  "What is the status of line 4?"),
   @("en_02_ticket.wav",      "Microsoft David Desktop", "Create a maintenance ticket for machine 7."),
-  @("en_03_alarms.wav",      "Microsoft Zira Desktop",  "List all critical alarms from the last hour.")
+  @("en_03_alarms.wav",      "Microsoft Zira Desktop",  "List all critical alarms from the last hour."),
+  @("de_04_manual.wav",      "Microsoft Hedda Desktop", "Was bedeutet der Alarm E 204 und was muss ich tun?"),
+  @("en_04_manual.wav",      "Microsoft Zira Desktop",  "What do I have to do before I open a machine?")
 )
 $fmt = New-Object System.Speech.AudioFormat.SpeechAudioFormatInfo(16000, [System.Speech.AudioFormat.AudioBitsPerSample]::Sixteen, [System.Speech.AudioFormat.AudioChannel]::Mono)
 foreach ($s in $samples) {

@@ -12,8 +12,11 @@ from __future__ import annotations
 import copy
 import json
 from datetime import datetime
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Callable
+
+from functions.manual import Manual
 
 DATA_PATH = Path(__file__).parent / "data" / "shopfloor.json"
 
@@ -75,6 +78,24 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
             "additionalProperties": False,
         },
     },
+    {
+        "name": "ask_manual",
+        "description": (
+            "Search the maintenance handbook. Use it for how-to and safety questions and to "
+            "explain alarm codes: what an alarm like E-204 means and how to fix it, lockout "
+            "before opening a machine, tool change, emergency stop reset, protective "
+            "equipment, who to call. Returns handbook sections with their source."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "question": {"type": "string", "minLength": 2, "description": "The user's question in their words, including any alarm code"},
+                "language": {"type": "string", "enum": ["de", "en"], "description": "Reply language: handbook text comes back in it"},
+            },
+            "required": ["question"],
+            "additionalProperties": False,
+        },
+    },
 ]
 
 
@@ -93,6 +114,12 @@ def anthropic_tools() -> list[dict[str, Any]]:
 
 class ToolError(ValueError):
     pass
+
+
+@lru_cache(maxsize=1)
+def _manual() -> Manual:
+    """The handbook is static: index it once per process, not per ShopFloor."""
+    return Manual()
 
 
 def _int(args: dict, key: str, lo: int, hi: int, required: bool = True) -> int | None:
@@ -134,6 +161,7 @@ class ShopFloor:
             "get_line_status": self.get_line_status,
             "list_alarms": self.list_alarms,
             "create_ticket": self.create_ticket,
+            "ask_manual": self.ask_manual,
         }
 
     # --- lookups -----------------------------------------------------------
@@ -205,6 +233,12 @@ class ShopFloor:
         }
         tickets.append(ticket)
         return {"created": True, "ticket": ticket, "machine_name": machine["name"]}
+
+    def ask_manual(self, question: Any = None, language: Any = None) -> dict[str, Any]:
+        if not isinstance(question, str):
+            raise ToolError("'question' must be a short text")
+        lang = _enum({"language": language}, "language", ("de", "en"))
+        return _manual().search(question, lang)
 
     # --- dispatch ----------------------------------------------------------
     def call(self, name: str, arguments: dict[str, Any] | str | None = None) -> dict[str, Any]:

@@ -64,14 +64,24 @@ Legend: ✅ done · 🔄 in progress · ⬜ not started
   - When the user gave no description, the model invented one for a ticket. The Day 9 confirmation step guards against this.
   - First LLM token takes 1.7–3.5 s because the tool round runs before any text. STT (~3.8 s) is still the largest stage.
 
-### Day 4 · Mon 2026-11-30 · Maintenance manual Q&A + TTS (3 h) ⬜
-- [ ] `functions/data/manual/`: a short DE/EN maintenance handbook: what each alarm code means, the fix steps, safety rules (e.g. lockout before opening a machine)
-- [ ] `functions/manual.py`: an `ask_manual(question)` tool that finds the most relevant handbook sections with local keyword/BM25 search (free, no extra model) and returns them with their source
-- [ ] Routing rules in the prompt: status/alarms/tickets go to the direct tools; "how do I…", "what does E-204 mean", safety questions go to `ask_manual`; the answer cites only the handbook
-- [ ] `pipeline/tts.py`: Piper with one German voice (`de_DE-thorsten`, CC0) and one English voice (check the licence first: `en_US-lessac` is reported as non-commercial), loaded once, voice chosen by language
-- [ ] CI: GitHub Actions workflow runs `pytest` on every push, with a "tests passing" badge in the README (the tests use fakes, so no models or GPU are needed)
+### Day 4 · Mon 2026-11-30 · Maintenance manual Q&A + TTS (3 h) ✅
+- [x] `functions/data/manual/`: a short DE/EN maintenance handbook: what each alarm code means, the fix steps, safety rules (e.g. lockout before opening a machine)
+- [x] `functions/manual.py`: an `ask_manual(question)` tool that finds the most relevant handbook sections with local keyword/BM25 search (free, no extra model) and returns them with their source
+- [x] Routing rules in the prompt: status/alarms/tickets go to the direct tools; "how do I…", "what does E-204 mean", safety questions go to `ask_manual`; the answer cites only the handbook
+- [x] `pipeline/tts.py`: Piper with one German voice (`de_DE-thorsten`, CC0) and one English voice (check the licence first: `en_US-lessac` is reported as non-commercial), loaded once, voice chosen by language
+- [x] CI: GitHub Actions workflow runs `pytest` on every push, with a "tests passing" badge in the README (the tests use fakes, so no models or GPU are needed)
 - **Commit:** `feat: maintenance manual Q&A tool + Piper TTS (DE/EN)`
 - **Change:** this replaces the earlier plan to bridge to a separate "Project B" LangGraph agent, which doesn't exist.
+- **Note:** done on Sat 2026-11-28, ahead of the calendar date.
+- **Handbook:** 12 sections (8 alarm codes, LOTO, protective equipment, tool change, who to call), the same IDs in DE and EN. The BM25 search handles STT spellings of codes ("E 204", "E204") and German compounds ("Spindelüberhitzung"), and finds the right section for all 11 test questions in `tests/test_manual.py`.
+- **Routing:** with the routing rules in the prompt alone, qwen2.5:3b called the right tool for 7 of 10 text questions. It answered lockout, emergency-stop and injury questions from general knowledge. Two fixes brought it to 10/10:
+  - The Ollama backend now runs `ask_manual` before the LLM when the question is clearly a how-to or safety question. A regex catches phrasing like "how do I", "was bedeutet" or "bevor ich". This also saves one LLM round, so the first token comes after ~1.5–1.8 s instead of ~2–3 s.
+  - The new prompt block made English answers about line status come out in German. The block is now placed after the answer rules, and the reply language is repeated after every tool result.
+- **TTS:** English voice: `en_US-ljspeech-medium` (LJ Speech, public domain). Lessac's model card doesn't state its licence, so it isn't used. Loading takes ~0.8 s per voice. The first synthesis takes ~3.5 s, so both voices are warmed up at startup. After that, Piper synthesizes 9–24 s of audio in 0.4–1.1 s. `run_file.py --tts-out` speaks the whole answer at once; Day 5 streams it sentence by sentence.
+- **Open issues for Day 5 and Day 8:**
+  - Answers are still too long for speech: up to 24 s of audio, with lists for alarms. For manual questions, the model sometimes reads the whole handbook section out instead of the two or three main steps.
+  - STT is still the largest stage at ~5.5 s.
+  - The model still invents a ticket description when the user gives none (en_02). The Day 9 confirmation step guards against this.
 
 ### Day 5 · Tue 2026-12-01 · Streaming (3 h) ⬜ → **M2**
 - [ ] Split the LLM token stream into sentences, keeping numbers and abbreviations like "z. B." or "Nr. 7" intact

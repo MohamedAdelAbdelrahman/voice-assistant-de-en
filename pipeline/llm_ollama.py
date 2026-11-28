@@ -20,6 +20,7 @@ from typing import Any, Callable, Iterator
 import httpx
 import ollama
 
+from functions.manual import manual_intent
 from functions.tools import ShopFloor, openai_tools
 from pipeline.llm import APOLOGY, LANG_NAMES, SYSTEM_PROMPT, TurnResult, execute_tool
 from pipeline.timing import LatencyLog
@@ -45,7 +46,9 @@ class OllamaAssistant:
         num_predict: int = 200,  # hard cap per request: spoken answers are short
         temperature: float = 0.2,
         keep_alive: str = "30m",
+        route_manual: bool = True,  # run ask_manual up front for clear how-to/safety questions
     ) -> None:
+        self.route_manual = route_manual
         self.shop = shop or ShopFloor()
         self.model = model
         self.client = client or ollama.Client(host=host, timeout=120)
@@ -83,6 +86,8 @@ class OllamaAssistant:
         start_len = len(self.history)
         self.history.append({"role": "user", "content": text})
         self.history.append({"role": "system", "content": f"Reply in {LANG_NAMES[lang]}."})
+        if self.route_manual and manual_intent(text):
+            self._prefetch_manual(text, lang, result)
 
         try:
             while result.requests <= self.max_tool_rounds:
@@ -95,6 +100,9 @@ class OllamaAssistant:
                     self.history.append(
                         {"role": "tool", "tool_name": name, "content": json.dumps(out, ensure_ascii=False)}
                     )
+                # Tool results contain German names and texts; a 3B model drifts into German
+                # unless the reply language is repeated right before it writes the answer.
+                self.history.append({"role": "system", "content": f"Reply in {LANG_NAMES[lang]}."})
         except (ollama.ResponseError, httpx.HTTPError, ConnectionError) as e:
             result.error = f"{type(e).__name__}: {e}"
             del self.history[start_len:]  # keep history consistent
@@ -111,6 +119,23 @@ class OllamaAssistant:
                 "tools": [c.name for c in result.tool_calls], "input_tokens": result.input_tokens,
                 "output_tokens": result.output_tokens, "error": result.error,
             })
+
+    def _prefetch_manual(self, text: str, lang: str, result: TurnResult) -> None:
+        """Run ask_manual before the first LLM request and add it to the history as if
+        the model had called it. Saves one LLM round trip, and the model can no longer
+        skip the handbook. Only used when the search finds something; otherwise the
+        model decides on its own (it may still call any tool)."""
+        args = {"question": text, "language": lang}
+        out = self.shop.call("ask_manual", args)
+        if not out.get("found"):
+            return
+        execute_tool(self.shop, "ask_manual", args, None, result, self.log)
+        result.prefetched = True
+        self.history += [
+            {"role": "assistant", "content": "", "tool_calls": [{"function": {"name": "ask_manual", "arguments": args}}]},
+            {"role": "tool", "tool_name": "ask_manual", "content": json.dumps(out, ensure_ascii=False)},
+            {"role": "system", "content": f"Reply in {LANG_NAMES[lang]}."},
+        ]
 
     def _one_request(self, result: TurnResult, t0: float):
         """Stream one chat request; yields text, returns the tool calls it asked for."""

@@ -4,6 +4,7 @@ Usage:
     python scripts/run_file.py eval/samples                      # local LLM via Ollama (free)
     python scripts/run_file.py eval/samples --llm-model qwen3:4b-instruct
     python scripts/run_file.py eval/samples --llm claude         # Claude API (paid)
+    python scripts/run_file.py eval/samples --tts-out results/answers   # also speak the answers (Piper)
 
 Ollama: install from ollama.com, then `ollama pull qwen2.5:3b`.
 Claude: ANTHROPIC_API_KEY in the environment or in a git-ignored .env file.
@@ -23,6 +24,7 @@ from functions.tools import ShopFloor  # noqa: E402
 from pipeline.llm import make_assistant  # noqa: E402
 from pipeline.stt import SpeechToText, load_audio  # noqa: E402
 from pipeline.timing import LatencyLog  # noqa: E402
+from pipeline.tts import TextToSpeech, save_wav  # noqa: E402
 from pipeline.vad import VoiceActivityDetector  # noqa: E402
 from scripts.transcribe_files import collect  # noqa: E402
 
@@ -45,6 +47,7 @@ def main() -> None:
     ap.add_argument("--llm", default="ollama", choices=["ollama", "claude"], help="LLM backend")
     ap.add_argument("--llm-model", default=None, help="default: qwen2.5:3b (ollama) / claude-haiku-5-5")
     ap.add_argument("--effort", default="low", choices=["low", "medium", "high"], help="Claude only")
+    ap.add_argument("--tts-out", default=None, help="directory for spoken answers (<file>_answer.wav); off by default")
     ap.add_argument("--log", default="results/latency_raw.jsonl")
     args = ap.parse_args()
     sys.stdout.reconfigure(encoding="utf-8")
@@ -59,6 +62,10 @@ def main() -> None:
     vad.warmup()
     stt = SpeechToText(args.stt_model)
     stt.warmup()
+    tts = None
+    if args.tts_out:
+        tts = TextToSpeech()
+        tts.warmup()
     try:
         assistant = make_assistant(args.llm, args.llm_model, shop=ShopFloor(), effort=args.effort, log=log)
         assistant.warmup()
@@ -69,7 +76,8 @@ def main() -> None:
                  "(see .env.example) or run `ant auth login`.")
     if assistant.last.error:
         sys.exit(f"LLM warm-up failed: {assistant.last.error}")
-    print(f"startup (load + warm up VAD, STT, LLM): {time.perf_counter() - t0:.1f}s\n")
+    stages = "VAD, STT, LLM" + (", TTS" if tts else "")
+    print(f"startup (load + warm up {stages}): {time.perf_counter() - t0:.1f}s\n")
 
     for f in files:
         # Each file is an independent conversation with fresh shop-floor data.
@@ -101,11 +109,21 @@ def main() -> None:
             print(f"  tool    {c.name}({json.dumps(c.args, ensure_ascii=False)}) -> {status}")
         if turn.error:
             print(f"  error   {turn.error}")
+        tts_note = ""
+        if tts and turn.text.strip():
+            # Day 4: the whole answer at once. Day 5 streams it sentence by sentence.
+            with log.stage("tts", **meta) as out:
+                speech = tts.synthesize(turn.text, tr.language)
+                out["audio_s"] = round(speech.duration_s, 2)
+            wav = save_wav(speech, Path(args.tts_out) / f"{f.stem}_answer.wav")
+            tts_note = f" | TTS {speech.ms:.0f} ms for {speech.duration_s:.1f} s audio"
+            print(f"  spoken  {wav.as_posix()}")
         print(
             f"  timing  VAD {log.last('vad')['ms']:.0f} ms | STT {log.last('stt')['ms']:.0f} ms | "
             f"LLM first token {turn.first_token_ms or 0:.0f} ms, total {turn.total_ms:.0f} ms "
             f"({turn.requests} requests, model {turn.model}"
-            + (f", cache read {turn.cache_read_tokens} tok" if args.llm == "claude" else "") + ")\n"
+            + (f", cache read {turn.cache_read_tokens} tok" if args.llm == "claude" else "") + ")"
+            + tts_note + "\n"
         )
 
 
